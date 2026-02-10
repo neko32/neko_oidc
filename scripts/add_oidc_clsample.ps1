@@ -1,0 +1,1 @@
+python.exe add_oidc_client.py --client-name "Sample Client" --redirect-uris "http://localhost:8080/callback" --grant-types "authorization_code,refresh_token"
