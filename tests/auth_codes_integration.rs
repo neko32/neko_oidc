@@ -6,6 +6,7 @@
 //!   で NEKOXDB_* 環境変数と実 DB を用意してから実行する。
 
 use neko_oidc::auth::codes::{generate_auth_code, AuthCodeStore, PgAuthCodeStore};
+use neko_oidc::client::client::{ClientStore, PgClientStore};
 use uuid::Uuid;
 
 // ========== DB 不要（常時実行） ==========
@@ -63,4 +64,27 @@ async fn integration_insert_auth_code_with_real_db() {
     let code = result.unwrap();
     assert_eq!(code.len(), 30);
     assert!(code.chars().all(|c| c.is_ascii_alphanumeric()));
+}
+
+
+#[tokio::test]
+#[ignore = "NEKOXDB_* を設定し、Postgres と oidc_clients テーブル が必要"]
+async fn integration_register_client_with_real_db() {
+    let dsn = match test_dsn() {
+        Some(s) => s,
+        None => {
+            eprintln!("skip: NEKOXDB_* not set");
+            return;
+        }
+    };
+    let pool = sqlx::PgPool::connect(&dsn).await.expect("DB connect");
+    let store = PgClientStore(pool);
+    let client_name = format!("{}_{}", "test_client", uuid::Uuid::new_v4().to_string());
+    let redirect_uris = vec!["http://localhost:18080/callback"];
+    let grant_types = vec!["authorization_code"];
+    let result = store.register_client(client_name.as_str(), redirect_uris, grant_types).await;
+    assert!(result.is_ok(), "register_client should succeed: {:?}", result);
+    let secret = result.unwrap();
+    println!("Client Name: {}, secret: {}", client_name, secret);
+    assert!(secret.len() > 0);
 }
